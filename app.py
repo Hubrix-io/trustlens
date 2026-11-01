@@ -133,6 +133,45 @@ animation:textIn .8s ease-out .2s both; }
         unsafe_allow_html=True,
     )
     
+def background():
+    """Techy animated background: moving grid, glowing orbs, scan line, rising particles."""
+    particles = "".join(
+        f"<span class='bg-p' style='left:{(i * 37) % 100}%;"
+        f"animation-duration:{9 + (i * 5) % 11}s;animation-delay:-{(i * 3) % 12}s;'></span>"
+        for i in range(16)
+    )
+    st.markdown(
+"""<style>
+@keyframes gridMove { from {background-position:0 0,0 0;} to {background-position:48px 48px,48px 48px;} }
+@keyframes drift1 { 0%,100% {transform:translate(0,0) scale(1);} 50% {transform:translate(10vw,8vh) scale(1.25);} }
+@keyframes drift2 { 0%,100% {transform:translate(0,0) scale(1.1);} 50% {transform:translate(-12vw,-6vh) scale(0.9);} }
+@keyframes drift3 { 0%,100% {transform:translate(0,0);} 50% {transform:translate(6vw,-10vh);} }
+@keyframes scan { from {top:-12%;} to {top:112%;} }
+@keyframes riseUp { 0% {transform:translateY(0);opacity:0;} 10% {opacity:.9;} 90% {opacity:.9;} 100% {transform:translateY(-110vh);opacity:0;} }
+.stApp { background:#070b14; }
+[data-testid="stHeader"] { background:transparent; }
+.block-container { position:relative; z-index:1; }
+.bg-layer { position:fixed; top:0; left:0; right:0; bottom:0; z-index:0; pointer-events:none; overflow:hidden; }
+.bg-grid { position:absolute; top:0; left:0; right:0; bottom:0;
+background-image:linear-gradient(rgba(34,197,94,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(34,197,94,.08) 1px,transparent 1px);
+background-size:48px 48px; animation:gridMove 5s linear infinite;
+-webkit-mask-image:radial-gradient(ellipse at center,#000 30%,transparent 85%);
+mask-image:radial-gradient(ellipse at center,#000 30%,transparent 85%); }
+.bg-orb { position:absolute; border-radius:50%; filter:blur(70px); opacity:.35; }
+.bg-orb.o1 { width:38vw; height:38vw; left:-8vw; top:-10vh; background:radial-gradient(circle,#22c55e,transparent 70%); animation:drift1 16s ease-in-out infinite; }
+.bg-orb.o2 { width:34vw; height:34vw; right:-6vw; top:25vh; background:radial-gradient(circle,#3b82f6,transparent 70%); animation:drift2 20s ease-in-out infinite; }
+.bg-orb.o3 { width:28vw; height:28vw; left:30vw; bottom:-14vh; background:radial-gradient(circle,#a855f7,transparent 70%); animation:drift3 24s ease-in-out infinite; }
+.bg-scan { position:absolute; left:0; right:0; height:90px;
+background:linear-gradient(to bottom,transparent,rgba(34,197,94,.10),transparent); animation:scan 7s linear infinite; }
+.bg-p { position:absolute; bottom:-10px; width:3px; height:3px; border-radius:50%;
+background:#22c55e; box-shadow:0 0 8px 2px rgba(34,197,94,.7); animation:riseUp 12s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .bg-layer * { animation:none !important; } }
+</style>
+<div class="bg-layer"><div class="bg-grid"></div><div class="bg-orb o1"></div><div class="bg-orb o2"></div><div class="bg-orb o3"></div><div class="bg-scan"></div>"""
+        + particles + "</div>",
+        unsafe_allow_html=True,
+    )
+    
 
 
 # ======================= HOME =======================
@@ -321,8 +360,12 @@ def page_emi():
                        "Rates are averages of percentages found near interest wording on the pages. "
                        "Your real rate depends on your profile.")
 
+
 # ======================= ROUTER =======================
-# ======================= ROUTER =======================
+
+
+background()
+
 if "splash_done" not in st.session_state:
     st.session_state.splash_done = True
     splash()
