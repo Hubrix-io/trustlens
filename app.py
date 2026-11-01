@@ -479,11 +479,36 @@ def loan_meter(amount):
     )
 
 
+# stops for the amount slider: small steps for small loans, bigger steps as it grows
+AMOUNT_STOPS = (list(range(1000, 10000, 1000)) + list(range(10000, 100000, 5000))
+                + list(range(100000, 1000000, 25000)) + list(range(1000000, 5000001, 100000)))
+
+
+def _nearest_stop(v):
+    return min(AMOUNT_STOPS, key=lambda s: abs(s - v))
+
+
+def _on_slider():          # slider moved -> update the typed box
+    st.session_state.loan_amt = st.session_state.loan_slider
+
+
+def _on_typed():           # number typed -> move the slider to the closest stop
+    st.session_state.loan_slider = _nearest_stop(st.session_state.loan_amt)
+
+
 def _loan_inputs():
+    if "loan_amt" not in st.session_state:
+        st.session_state.loan_amt = 50000
+        st.session_state.loan_slider = _nearest_stop(50000)
+
     meter_col, input_col = st.columns([1, 2])
     with input_col:
         st.write("")
-        amount = st.number_input("Loan amount (₹)", LOAN_MIN, LOAN_MAX, 50000, 1000)
+        amount = st.number_input("Loan amount (₹)", LOAN_MIN, LOAN_MAX, step=1000,
+                                 key="loan_amt", on_change=_on_typed)
+        st.select_slider("Slide to change the loan amount", options=AMOUNT_STOPS,
+                         key="loan_slider", on_change=_on_slider,
+                         format_func=lambda v: f"₹{v:,}")
         months = st.slider("Tenure (months)", 3, 60, 12)
     with meter_col:
         st.markdown(loan_meter(amount), unsafe_allow_html=True)
