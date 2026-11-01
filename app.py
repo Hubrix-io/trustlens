@@ -43,8 +43,80 @@ st.markdown("""
 }
 
 [data-testid="stMetric"] { animation: popIn .5s ease-out both; }
-.stButton > button { transition: transform .15s ease; }
-.stButton > button:hover { transform: scale(1.03); }
+/* ---------- techy animated buttons ---------- */
+@keyframes btnGlow {
+  0%,100% { box-shadow: 0 0 8px rgba(34,197,94,.35), 0 0 0 0 rgba(34,197,94,.45); }
+  50%     { box-shadow: 0 0 20px rgba(34,197,94,.75), 0 0 0 7px rgba(34,197,94,0); }
+}
+@keyframes btnFlow {
+  from { background-position: 0% 50%; }
+  to   { background-position: 300% 50%; }
+}
+@keyframes btnShimmer {
+  from { transform: translateX(-130%) skewX(-20deg); }
+  to   { transform: translateX(330%) skewX(-20deg); }
+}
+
+.stButton > button, .stDownloadButton > button {
+  position: relative; overflow: hidden;
+  border-radius: 10px; font-weight: 600; letter-spacing: .3px;
+  transition: transform .18s ease, box-shadow .25s ease,
+              border-color .25s ease, background-color .25s ease;
+}
+
+/* primary buttons: flowing gradient + pulsing glow + light sweep */
+[data-testid="stBaseButton-primary"] {
+  background: linear-gradient(120deg,#16a34a,#22c55e,#06b6d4,#22c55e,#16a34a) !important;
+  background-size: 300% 100% !important;
+  border: none !important;
+  animation: btnFlow 6s linear infinite, btnGlow 2.8s ease-in-out infinite;
+}
+[data-testid="stBaseButton-primary"] p { color: #04130a !important; }
+[data-testid="stBaseButton-primary"]::after {
+  content: ""; position: absolute; top: 0; left: 0; width: 35%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+  transform: translateX(-130%) skewX(-20deg);
+  animation: btnShimmer 3.5s ease-in-out infinite;
+  pointer-events: none;
+}
+[data-testid="stBaseButton-primary"]:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 0 26px rgba(34,197,94,.9), 0 8px 22px rgba(0,0,0,.4);
+}
+
+/* secondary buttons (like Back to home): outlined, glow on hover */
+[data-testid="stBaseButton-secondary"] {
+  background: rgba(34,197,94,.06) !important;
+  border: 1px solid rgba(34,197,94,.45) !important;
+}
+[data-testid="stBaseButton-secondary"]:hover {
+  background: rgba(34,197,94,.16) !important;
+  border-color: #22c55e !important;
+  transform: translateY(-2px);
+  box-shadow: 0 0 18px rgba(34,197,94,.55), inset 0 0 12px rgba(34,197,94,.2);
+}
+
+/* press effect for every button */
+.stButton > button:active, .stDownloadButton > button:active {
+  transform: scale(.95) !important;
+  box-shadow: 0 0 6px rgba(34,197,94,.9) !important;
+}
+
+/* tabs */
+button[data-baseweb="tab"] { transition: color .2s ease, transform .2s ease, text-shadow .2s ease; }
+button[data-baseweb="tab"]:hover { transform: translateY(-2px); text-shadow: 0 0 10px rgba(34,197,94,.8); }
+[data-baseweb="tab-highlight"] {
+  background: linear-gradient(90deg,#22c55e,#06b6d4) !important;
+  box-shadow: 0 0 12px rgba(34,197,94,.9);
+}
+
+/* input boxes glow when you click into them */
+[data-baseweb="input"]:focus-within, [data-baseweb="textarea"]:focus-within,
+[data-baseweb="select"]:focus-within {
+  box-shadow: 0 0 0 1px #22c55e, 0 0 16px rgba(34,197,94,.45) !important;
+  border-color: #22c55e !important;
+  transition: box-shadow .25s ease;
+}
 
 /* respect people who turned animations off in their OS */
 @media (prefers-reduced-motion: reduce) {
