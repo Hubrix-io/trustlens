@@ -1,3 +1,5 @@
+import math
+
 import pandas as pd
 import streamlit as st
 
@@ -197,6 +199,7 @@ if "page" not in st.session_state:
 
 def go(page):
     st.session_state.page = page
+    st.session_state.pop("meter_prev", None)   # meter rises from empty when a page opens
 
 
 def back_button(target="home", label="← Back to home"):
@@ -406,10 +409,84 @@ def page_emi_hub():
                       use_container_width=True, on_click=go, args=("compare",))
 
 
+LOAN_MIN, LOAN_MAX = 1000, 5000000
+METER_H = 280          # tube height in px
+# labelled marks on the meter (log scale, so small and large loans both show up)
+METER_TICKS = [(1000, "₹1K"), (10000, "₹10K"), (100000, "₹1L"),
+               (1000000, "₹10L"), (5000000, "₹50L")]
+
+
+def _meter_frac(v):
+    """0..1 position on the meter. Log scale: ₹1K at the bottom, ₹50L at the top."""
+    v = max(LOAN_MIN, min(LOAN_MAX, v))
+    return math.log(v / LOAN_MIN) / math.log(LOAN_MAX / LOAN_MIN)
+
+
+def loan_meter(amount):
+    """Vertical strength-meter style gauge for the loan amount.
+    The fill rises from its previous level to the new one every time the amount changes."""
+    new = _meter_frac(amount) * 100
+    old = st.session_state.get("meter_prev", 0.0)     # 0 on first open: rises from the bottom
+    st.session_state["meter_prev"] = new
+    uid = f"{int(old * 10)}_{int(new * 10)}"           # new keyframe name per change replays the animation
+    hot = new >= 90
+
+    ticks = "".join(
+        f"<div class='m-tick' style='bottom:{_meter_frac(v) * 100:.1f}%'><span>{lab}</span><i></i></div>"
+        for v, lab in METER_TICKS)
+
+    return (
+        "<style>"
+        f"@keyframes mfill{uid}{{from{{height:{old:.2f}%;}}to{{height:{new:.2f}%;}}}}"
+        f"@keyframes mtag{uid}{{from{{bottom:{old:.2f}%;}}to{{bottom:{new:.2f}%;}}}}"
+        "@keyframes mstripe{from{background-position:0 0;}to{background-position:0 -40px;}}"
+        "@keyframes mglow{0%,100%{box-shadow:0 0 14px rgba(34,197,94,.35),inset 0 0 12px rgba(0,0,0,.6);}"
+        "50%{box-shadow:0 0 28px rgba(34,197,94,.8),inset 0 0 12px rgba(0,0,0,.6);}}"
+        "@keyframes mhot{0%,100%{box-shadow:0 0 18px rgba(239,68,68,.5),inset 0 0 12px rgba(0,0,0,.6);}"
+        "50%{box-shadow:0 0 42px rgba(239,68,68,1),inset 0 0 12px rgba(0,0,0,.6);}}"
+        "@keyframes mpulse{0%,100%{transform:scaleY(1);opacity:.9;}50%{transform:scaleY(2.2);opacity:1;}}"
+        "@keyframes mpop{0%{transform:scale(.6);opacity:0;}70%{transform:scale(1.15);opacity:1;}100%{transform:scale(1);}}"
+        f".m-wrap{{position:relative;height:{METER_H + 40}px;width:100%;max-width:230px;margin:auto;padding-top:20px;}}"
+        f".m-tube{{position:absolute;left:58px;top:20px;width:56px;height:{METER_H}px;border-radius:28px;"
+        "background:rgba(255,255,255,.05);border:3px solid rgba(255,255,255,.28);overflow:hidden;"
+        f"animation:{'mhot' if hot else 'mglow'} {'.7s' if hot else '2.6s'} ease-in-out infinite;}}"
+        f".m-fill{{position:absolute;left:0;right:0;bottom:0;height:{new:.2f}%;"
+        f"background:linear-gradient(to top,#22c55e 0%,#84cc16 35%,#f59e0b 65%,#ef4444 100%);"
+        f"background-size:100% {METER_H}px;background-position:bottom;"
+        f"animation:mfill{uid} 1.4s cubic-bezier(.34,1.45,.5,1) both;}}"
+        ".m-fill::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;"
+        "background:repeating-linear-gradient(to top,rgba(255,255,255,.22) 0 8px,transparent 8px 20px);"
+        "background-size:100% 40px;animation:mstripe 1.2s linear infinite;}"
+        ".m-fill::after{content:'';position:absolute;left:0;right:0;top:0;height:5px;"
+        "background:#fff;box-shadow:0 0 14px 4px rgba(255,255,255,.9);animation:mpulse 1.1s ease-in-out infinite;}"
+        ".m-tick{position:absolute;left:0;width:54px;height:0;display:flex;align-items:center;"
+        "justify-content:flex-end;gap:4px;font-size:.7rem;opacity:.75;white-space:nowrap;}"
+        ".m-tick i{display:block;width:8px;height:2px;background:rgba(255,255,255,.55);}"
+        f".m-ticks{{position:absolute;left:0;top:20px;height:{METER_H}px;width:54px;}}"
+        f".m-tagbox{{position:absolute;left:120px;top:20px;height:{METER_H}px;width:110px;}}"
+        f".m-tag{{position:absolute;left:0;height:0;display:flex;align-items:center;bottom:{new:.2f}%;"
+        f"animation:mtag{uid} 1.4s cubic-bezier(.34,1.45,.5,1) both;}}"
+        ".m-tag b{display:inline-block;margin-left:2px;padding:3px 9px;border-radius:8px;font-size:.85rem;"
+        "background:#22c55e;color:#04130a;white-space:nowrap;transform:translateY(0);"
+        "animation:mpop .6s ease-out .9s both;}"
+        ".m-tag::before{content:'';border:7px solid transparent;border-right-color:#22c55e;margin-right:-2px;}"
+        "</style>"
+        "<div class='m-wrap'>"
+        f"<div class='m-ticks'>{ticks}</div>"
+        f"<div class='m-tube'><div class='m-fill'></div></div>"
+        f"<div class='m-tagbox'><div class='m-tag'><b>₹{amount:,.0f}</b></div></div>"
+        "</div>"
+    )
+
+
 def _loan_inputs():
-    a, b = st.columns(2)
-    amount = a.number_input("Loan amount (₹)", 1000, 5000000, 50000, 1000)
-    months = b.slider("Tenure (months)", 3, 60, 12)
+    meter_col, input_col = st.columns([1, 2])
+    with input_col:
+        st.write("")
+        amount = st.number_input("Loan amount (₹)", LOAN_MIN, LOAN_MAX, 50000, 1000)
+        months = st.slider("Tenure (months)", 3, 60, 12)
+    with meter_col:
+        st.markdown(loan_meter(amount), unsafe_allow_html=True)
     return amount, months
 
 
