@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor, wait
 from rbi_list import search_rbi_list
 from message_check import analyze_message
 from tinyfish_client import safe_search, safe_agent, safe_research
@@ -81,7 +82,7 @@ def check_lender_site(app_name, site):
             "(digital lending apps, partner apps, product pages). Also find the "
             "grievance redressal officer contact if shown. Return JSON with keys: "
             "mentions_app (true/false), grievance_contact, evidence_url.")
-    res = safe_agent(site, goal)
+    res = safe_agent(site, goal, label="Lender website")
     if not res["ok"] or not isinstance(res.get("result"), dict):
         return _check(name, tool, "unknown", 0,
                       "Could not verify this site (blocked, slow or unreadable).",
@@ -109,7 +110,7 @@ def check_fees_privacy(app_name, site):
             "processing_fee, prepayment_charges, privacy_policy_url, "
             "shares_data_with_third_parties (true/false/unknown), "
                         "data_collected (short text), disbursal_time_stated (how fast the lender says money is paid out).")
-    res = safe_agent(site, goal)
+    res = safe_agent(site, goal, label="Fees & privacy")
     if not res["ok"] or not isinstance(res.get("result"), dict):
         return unknown(name, tool, "Could not read fee or privacy pages from this site.")
     d = res["result"]
@@ -139,7 +140,7 @@ def check_nbfc(entity):
         return unknown(name, tool, "No lender name to look up.")
     goal = (f"Search this list for the company '{entity}'. Return JSON with keys: "
             "found (true/false), registration_number, status (for example active or cancelled).")
-    res = safe_agent(NBFC_LIST_URL, goal)
+    res = safe_agent(NBFC_LIST_URL, goal, label="RBI NBFC list")
     if not res["ok"] or not isinstance(res.get("result"), dict):
         return unknown(name, tool, "Could not read RBI's NBFC list right now.")
     d = res["result"]
@@ -175,7 +176,7 @@ def check_reputation(name_q):
     else:
         summary = "No complaint-type words in the top results. Absence is not proof of safety."
         status = "good"
-        return _check(name, tool, status, pts, summary,
+    return _check(name, tool, status, pts, summary,
                   sources=[{"title": x["title"], "url": x["url"]} for x in items[:6]],
                   data={"snippets": [(x["title"] + " " + x.get("snippet", "")) for x in items]})
 
@@ -225,3 +226,26 @@ def verdict(score):
 def finalize(checks):
     score = max(0, min(100, 50 + sum(c["points"] for c in checks)))
     return {"score": score, "verdict": verdict(score), "checks": checks}
+
+
+def verdict_band(score):
+    return "good" if score >= 70 else "mid" if score >= 40 else "bad"
+
+
+def run_audit(app_name, website="", message="", use_research=False, timeout=150):
+    """Run a whole audit without a UI. Used by Compare, Monitor and tests."""
+    plan = prepare(app_name, website, message, use_research)
+    checks = list(plan["instant"])
+    jobs = plan["jobs"]
+    pool = ThreadPoolExecutor(max_workers=max(1, len(jobs)))
+    futures = {pool.submit(fn): name for name, fn in jobs.items()}
+    done, pending = wait(futures, timeout=timeout)
+    for f in done:
+        try:
+            checks.append(f.result())
+        except Exception as e:
+            checks.append(unknown(futures[f], "TinyFish", f"Check failed: {str(e)[:100]}"))
+    for f in pending:
+        checks.append(unknown(futures[f], "TinyFish", "Timed out."))
+    pool.shutdown(wait=False, cancel_futures=True)
+    return finalize(checks)
