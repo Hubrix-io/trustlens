@@ -40,3 +40,23 @@ def safe_fetch(url):
         return {"ok": True, "raw": str(r.results)[:4000]}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+def safe_research(query, mode="standard"):
+    USAGE["research"] += 1
+    try:
+        try:
+            r = client.research.run(query=query, mode=mode)
+        except TypeError:
+            r = client.research.run(query=query)
+        text = None
+        for attr in ("report", "result", "final_result", "summary"):
+            v = getattr(r, attr, None)
+            if v:
+                text = v if isinstance(v, str) else str(v)
+                break
+        if text is None:
+            text = str(r)
+        return {"ok": True, "report": text[:3000]}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:300]}
