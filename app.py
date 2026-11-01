@@ -118,6 +118,72 @@ button[data-baseweb="tab"]:hover { transform: translateY(-2px); text-shadow: 0 0
   transition: box-shadow .25s ease;
 }
 
+/* ---------- POP-OUT BUTTONS ---------- */
+@keyframes ringPulse {
+  0%   { box-shadow: 0 6px 0 #0b7a35, 0 10px 22px rgba(0,0,0,.45), 0 0 0 0 rgba(34,197,94,.65); }
+  70%  { box-shadow: 0 6px 0 #0b7a35, 0 10px 22px rgba(0,0,0,.45), 0 0 0 16px rgba(34,197,94,0); }
+  100% { box-shadow: 0 6px 0 #0b7a35, 0 10px 22px rgba(0,0,0,.45), 0 0 0 0 rgba(34,197,94,0); }
+}
+@keyframes floaty {
+  0%,100% { translate: 0 0; }
+  50%     { translate: 0 -4px; }
+}
+
+/* every primary button: bigger, 3D, pulsing neon ring */
+[data-testid="stBaseButton-primary"] {
+  min-height: 3.1rem;
+  padding: .7rem 1.6rem !important;
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  border-radius: 14px !important;
+  border: 2px solid rgba(255,255,255,.35) !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 6px 0 #0b7a35, 0 10px 22px rgba(0,0,0,.45);
+  animation: btnFlow 5s linear infinite, ringPulse 2.2s ease-out infinite, floaty 3.2s ease-in-out infinite;
+}
+[data-testid="stBaseButton-primary"]:hover {
+  transform: translateY(-5px) scale(1.06) !important;
+  box-shadow: 0 10px 0 #0b7a35, 0 0 34px rgba(34,197,94,.95), 0 16px 30px rgba(0,0,0,.5) !important;
+  filter: brightness(1.12);
+}
+[data-testid="stBaseButton-primary"]:active {
+  transform: translateY(5px) scale(.97) !important;
+  box-shadow: 0 1px 0 #0b7a35, 0 0 14px rgba(34,197,94,.9) !important;
+}
+
+/* the two big home buttons: extra large */
+.st-key-h1 button, .st-key-h2 button, .st-key-s1 button, .st-key-s2 button {
+  min-height: 4.4rem !important;
+  font-size: 1.3rem !important;
+  border-radius: 18px !important;
+  letter-spacing: 1.5px;
+}
+
+/* EMI menu: the two tool buttons fly in from opposite sides, then float */
+@keyframes slideInL { from {opacity:0; transform:translateX(-70px);} to {opacity:1; transform:none;} }
+@keyframes slideInR { from {opacity:0; transform:translateX(70px);}  to {opacity:1; transform:none;} }
+.st-key-s1 { animation: slideInL .8s cubic-bezier(.2,.9,.3,1.2) .35s both; }
+.st-key-s2 { animation: slideInR .8s cubic-bezier(.2,.9,.3,1.2) .55s both; }
+.st-key-s2 button { animation-delay: 0s, .6s, 1.2s !important; }
+
+/* secondary buttons (Back to home): neon outline that fills on hover */
+[data-testid="stBaseButton-secondary"] {
+  min-height: 2.7rem;
+  padding: .5rem 1.3rem !important;
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+  border: 2px solid #22c55e !important;
+  box-shadow: 0 0 12px rgba(34,197,94,.35), inset 0 0 10px rgba(34,197,94,.12);
+}
+[data-testid="stBaseButton-secondary"]:hover {
+  background: linear-gradient(120deg,#16a34a,#22c55e) !important;
+  transform: translateY(-3px) scale(1.05) !important;
+  box-shadow: 0 0 28px rgba(34,197,94,.9), 0 8px 18px rgba(0,0,0,.4) !important;
+}
+[data-testid="stBaseButton-secondary"]:hover p { color: #04130a !important; }
+[data-testid="stBaseButton-secondary"]:active { transform: scale(.96) !important; }
+
 /* respect people who turned animations off in their OS */
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
@@ -133,8 +199,8 @@ def go(page):
     st.session_state.page = page
 
 
-def back_button():
-    st.button("← Back to home", on_click=go, args=("home",))
+def back_button(target="home", label="← Back to home"):
+    st.button(label, on_click=go, args=(target,))
     
 def risk_gauge(score, size=220):
     """Full-circle animated gauge. score is 0-100."""
@@ -267,7 +333,7 @@ def page_home():
             st.write("Calculate your EMI and compare the real cost of loans "
                      "from different apps side by side.")
             st.button("Calculate & compare", key="h2", type="primary",
-                      use_container_width=True, on_click=go, args=("emi",))
+                      use_container_width=True, on_click=go, args=("emi_hub",))
 
     st.write("")
     st.info("🔒 TrustLens never asks for your PAN, Aadhaar, CIBIL score or bank details.")
@@ -315,122 +381,152 @@ def page_message():
                     "- Never share OTPs, PINs or passwords.\n"
                     "- Check the lender on RBI's website.")
 
-# ======================= PAGE 2: EMI + COMPARE =======================
-def page_emi():
+# ======================= EMI & COMPARE MENU =======================
+def page_emi_hub():
     back_button()
-    st.title("💰 EMI calculator & loan app comparison")
+    st.title("💰 EMI & compare loan apps")
+    st.subheader("Pick a tool")
+    st.write("")
+    c1, c2 = st.columns(2)
 
+    with c1:
+        with st.container(border=True):
+            st.markdown("### 🧮 EMI calculator")
+            st.write("Enter amount, rate and tenure to see your monthly EMI, "
+                     "total repayment and the real yearly cost.")
+            st.button("Open EMI calculator", key="s1", type="primary",
+                      use_container_width=True, on_click=go, args=("calc",))
+
+    with c2:
+        with st.container(border=True):
+            st.markdown("### 🏦 Compare loan apps")
+            st.write("Fetch live data from lenders and compare EMI, RBI status, "
+                     "privacy flags and more side by side.")
+            st.button("Compare loan apps", key="s2", type="primary",
+                      use_container_width=True, on_click=go, args=("compare",))
+
+
+def _loan_inputs():
     a, b = st.columns(2)
     amount = a.number_input("Loan amount (₹)", 1000, 5000000, 50000, 1000)
     months = b.slider("Tenure (months)", 3, 60, 12)
+    return amount, months
 
-    tab_calc, tab_cmp = st.tabs(["🧮 EMI calculator", "🏦 Live lender comparison"])
 
-    # ---- calculator ----
-    with tab_calc:
-        c1, c2, c3 = st.columns(3)
-        rate = c1.number_input("Interest rate (%)", 0.0, 100.0, 18.0, 0.5)
-        rtype = c2.selectbox("Rate type", RATE_TYPES)
-        fee = c3.number_input("Processing fee (% of amount)", 0.0, 20.0, 0.0, 0.5)
-        k = cost_for(amount, months, rate, rtype, fee)
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Monthly EMI", f"₹{k['emi']:,.0f}")
-        m2.metric("Total repayment", f"₹{k['total']:,.0f}")
-        m3.metric("Extra paid over what you get", f"₹{k['extra_cost']:,.0f}")
-        m4.metric("Effective yearly rate", f"{k['apr']:.1f}%")
-        st.caption(f"You borrow ₹{amount:,.0f}, pay a fee of ₹{k['fee']:,.0f} and "
-                   f"receive ₹{k['received']:,.0f}. GST and other charges not included.")
+# ======================= PAGE 2a: EMI CALCULATOR =======================
+def page_calc():
+    back_button("emi_hub", "← Back to EMI & compare")
+    st.title("🧮 EMI calculator")
+    amount, months = _loan_inputs()
 
-       # ---- live lender comparison ----
-    with tab_cmp:
-        st.write("Fetches each lender's pages live with TinyFish every time you press the button.")
+    c1, c2, c3 = st.columns(3)
+    rate = c1.number_input("Interest rate (%)", 0.0, 100.0, 18.0, 0.5)
+    rtype = c2.selectbox("Rate type", RATE_TYPES)
+    fee = c3.number_input("Processing fee (% of amount)", 0.0, 20.0, 0.0, 0.5)
+    k = cost_for(amount, months, rate, rtype, fee)
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Monthly EMI", f"₹{k['emi']:,.0f}")
+    m2.metric("Total repayment", f"₹{k['total']:,.0f}")
+    m3.metric("Extra paid over what you get", f"₹{k['extra_cost']:,.0f}")
+    m4.metric("Effective yearly rate", f"{k['apr']:.1f}%")
+    st.caption(f"You borrow ₹{amount:,.0f}, pay a fee of ₹{k['fee']:,.0f} and "
+               f"receive ₹{k['received']:,.0f}. GST and other charges not included.")
 
-        if st.button("🌐 Fetch live data & compare", type="primary", key="cmp_btn"):
-            from lenders import fetch_all_lenders, recommend
-            with st.spinner("Fetching all lenders in parallel (this can take a minute)..."):
-                results = fetch_all_lenders()
 
-            # average of the rates that were actually found on the lenders' pages
-            found_rates = [d["rate_avg"] for d in results if d["rate_avg"]]
-            market_avg = round(sum(found_rates) / len(found_rates), 1) if found_rates else None
+# ======================= PAGE 2b: COMPARE LOAN APPS =======================
+def page_compare():
+    back_button("emi_hub", "← Back to EMI & compare")
+    st.title("🏦 Compare loan apps")
+    amount, months = _loan_inputs()
 
-            if market_avg:
-                st.metric("Average rate across lenders (from fetched pages)", f"{market_avg}%")
+    st.write("Fetches each lender's pages live with TinyFish every time you press the button.")
+
+    if st.button("🌐 Fetch live data & compare", type="primary", key="cmp_btn"):
+        from lenders import fetch_all_lenders, recommend
+        with st.spinner("Fetching all lenders in parallel (this can take a minute)..."):
+            results = fetch_all_lenders()
+
+        # average of the rates that were actually found on the lenders' pages
+        found_rates = [d["rate_avg"] for d in results if d["rate_avg"]]
+        market_avg = round(sum(found_rates) / len(found_rates), 1) if found_rates else None
+
+        if market_avg:
+            st.metric("Average rate across lenders (from fetched pages)", f"{market_avg}%")
+        else:
+            st.warning("No interest rate was found on any lender's pages, so EMIs cannot be estimated. "
+                       "Add each lender's personal-loan page URL in lenders.py.")
+
+        rows = []
+        for d in results:
+            if d["rate_avg"]:
+                rate, source = d["rate_avg"], "Average of rates on its pages"
+            elif market_avg:
+                rate, source = market_avg, "Average of all lenders"
             else:
-                st.warning("No interest rate was found on any lender's pages, so EMIs cannot be estimated. "
-                           "Add each lender's personal-loan page URL in lenders.py.")
+                rate, source = None, "No rate found"
 
-            rows = []
-            for d in results:
+            if rate:
+                k = cost_for(amount, months, rate, RATE_TYPES[0], d["fee_pct"] or 0.0)
+                emi, total = round(k["emi"]), round(k["total"])
+            else:
+                emi, total = None, None
+            label, why = recommend(d, rate, market_avg)
+
+            rows.append({
+                "Lender": d["name"],
+                "Recommendation": label,
+                "Why": why,
+                "Type": d["kind"],
+                "Rate used (%)": rate,
+                "Rate source": source,
+                "Monthly EMI (₹)": emi,
+                "Total repayment (₹)": total,
+                "PAN needed?": d["pan"],
+                "RBI status": d["rbi"],
+                "Privacy flags": len(d["privacy_flags"]) if d["privacy_scanned"] else "Not scanned",
+                "Fetched": "✅" if d["fetched"] else "🔴",
+            })
+        st.dataframe(pd.DataFrame(rows).sort_values("Monthly EMI (₹)", na_position="last"),
+                     use_container_width=True, hide_index=True)
+        
+        best = [r for r in rows if r["Recommendation"].startswith("✅") and r["Monthly EMI (₹)"]]
+        if best:
+            top = min(best, key=lambda r: r["Monthly EMI (₹)"])
+            st.success(f"Best pick from this check: **{top['Lender']}** "
+                       f"(EMI ₹{top['Monthly EMI (₹)']:,}). {top['Why']}.")
+        else:
+            st.info("No lender cleared every check this time. Read the details below before choosing.")
+
+        st.subheader("Details per lender")
+
+        st.subheader("Details per lender")
+        for d in results:
+            with st.expander(f"{d['name']}  ·  {d['rbi']}"):
+                if not d["fetched"]:
+                    st.error(f"Could not fetch: {d['error'] or 'unknown error'}")
+                st.markdown(f"**PAN:** {d['pan']}")
+                if d["pan_evidence"]:
+                    st.caption(f"Page said: “{d['pan_evidence']}”")
                 if d["rate_avg"]:
-                    rate, source = d["rate_avg"], "Average of rates on its pages"
-                elif market_avg:
-                    rate, source = market_avg, "Average of all lenders"
+                    st.markdown(f"**Interest rates on page:** {d['rate_min']}% to {d['rate_max']}% "
+                                f"(average {d['rate_avg']}%)")
+                if d["fee_pct"] is not None:
+                    st.markdown(f"**Processing fee on page:** {d['fee_pct']}%")
+                if not d["privacy_scanned"]:
+                    st.warning("No privacy policy text in the fetched pages. Add the privacy-policy URL in lenders.py.")
+                elif d["privacy_flags"]:
+                    st.markdown("**Privacy flags:**")
+                    for f in d["privacy_flags"]:
+                        st.markdown(f"- ⚠️ {f}")
                 else:
-                    rate, source = None, "No rate found"
+                    st.markdown("**Privacy flags:** none found in the fetched text")
+                for u in d["urls"]:
+                    st.markdown(f"- Source: {u}")
 
-                if rate:
-                    k = cost_for(amount, months, rate, RATE_TYPES[0], d["fee_pct"] or 0.0)
-                    emi, total = round(k["emi"]), round(k["total"])
-                else:
-                    emi, total = None, None
-                label, why = recommend(d, rate, market_avg)
-
-                rows.append({
-                    "Lender": d["name"],
-                    "Recommendation": label,
-                    "Why": why,
-                    "Type": d["kind"],
-                    "Rate used (%)": rate,
-                    "Rate source": source,
-                    "Monthly EMI (₹)": emi,
-                    "Total repayment (₹)": total,
-                    "PAN needed?": d["pan"],
-                    "RBI status": d["rbi"],
-                    "Privacy flags": len(d["privacy_flags"]) if d["privacy_scanned"] else "Not scanned",
-                    "Fetched": "✅" if d["fetched"] else "🔴",
-                })
-            st.dataframe(pd.DataFrame(rows).sort_values("Monthly EMI (₹)", na_position="last"),
-                         use_container_width=True, hide_index=True)
-            
-            best = [r for r in rows if r["Recommendation"].startswith("✅") and r["Monthly EMI (₹)"]]
-            if best:
-                top = min(best, key=lambda r: r["Monthly EMI (₹)"])
-                st.success(f"Best pick from this check: **{top['Lender']}** "
-                           f"(EMI ₹{top['Monthly EMI (₹)']:,}). {top['Why']}.")
-            else:
-                st.info("No lender cleared every check this time. Read the details below before choosing.")
-
-            st.subheader("Details per lender")
-
-            st.subheader("Details per lender")
-            for d in results:
-                with st.expander(f"{d['name']}  ·  {d['rbi']}"):
-                    if not d["fetched"]:
-                        st.error(f"Could not fetch: {d['error'] or 'unknown error'}")
-                    st.markdown(f"**PAN:** {d['pan']}")
-                    if d["pan_evidence"]:
-                        st.caption(f"Page said: “{d['pan_evidence']}”")
-                    if d["rate_avg"]:
-                        st.markdown(f"**Interest rates on page:** {d['rate_min']}% to {d['rate_max']}% "
-                                    f"(average {d['rate_avg']}%)")
-                    if d["fee_pct"] is not None:
-                        st.markdown(f"**Processing fee on page:** {d['fee_pct']}%")
-                    if not d["privacy_scanned"]:
-                        st.warning("No privacy policy text in the fetched pages. Add the privacy-policy URL in lenders.py.")
-                    elif d["privacy_flags"]:
-                        st.markdown("**Privacy flags:**")
-                        for f in d["privacy_flags"]:
-                            st.markdown(f"- ⚠️ {f}")
-                    else:
-                        st.markdown("**Privacy flags:** none found in the fetched text")
-                    for u in d["urls"]:
-                        st.markdown(f"- Source: {u}")
-
-            st.caption("Keyword scan of public pages, not a legal review. 'In RBI DLA list' means the "
-                       "app is declared by a regulated entity. It is not an RBI approval of the app. "
-                       "Rates are averages of percentages found near interest wording on the pages. "
-                       "Your real rate depends on your profile.")
+        st.caption("Keyword scan of public pages, not a legal review. 'In RBI DLA list' means the "
+                   "app is declared by a regulated entity. It is not an RBI approval of the app. "
+                   "Rates are averages of percentages found near interest wording on the pages. "
+                   "Your real rate depends on your profile.")
 
 
 # ======================= ROUTER =======================
@@ -442,4 +538,5 @@ if "splash_done" not in st.session_state:
     st.session_state.splash_done = True
     splash()
 
-{"home": page_home, "message": page_message, "emi": page_emi}[st.session_state.page]()
+{"home": page_home, "message": page_message, "emi_hub": page_emi_hub,
+ "calc": page_calc, "compare": page_compare}[st.session_state.page]()
